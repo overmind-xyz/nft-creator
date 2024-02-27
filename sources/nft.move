@@ -157,6 +157,12 @@ module overmind::NonFungibleToken {
         @param ctx - the transaction context
     */
     fun init(ctx: &mut TxContext) {
+        let minter_cap = MinterCap {
+            id: ctx.sender(), // Set ID addsress of sender
+            sales: Balance(0),
+        };
+        // Move Ownership of MinterCap Obj to deployer
+        move_to_sender(minter_cap);
 
     }
 
@@ -182,9 +188,40 @@ module overmind::NonFungibleToken {
         minter_cap: &mut MinterCap,
         ctx: &mut TxContext, 
     ) {
-        
+        // Verify that the sender is the owner of the MinterCap object
+        assert(ctx.sender() == minter_cap.id, 1);
+
+        // Calculate the price of the NFT (1 SUI)
+        let nft_price = Coin(1);
+
+        // Abort if payment bellow the price of the NFT
+        assert(payment_coin >= nft_price, EInsufficientPayment);
     }
 
+        // Create a new NonFungibleToken object
+        let new_nft = NonFungibleToken {
+            id: UID::generate(), // Unique ID for NFT
+            name: String::from_utf8(nft_name).unwrap(), // Conver vector<u8> to String
+            description: String::from_utf8(nft_description).unwrap(), // Conver vector<u8> to String
+            image: Url::from_bytes(nft_image), // Conver vector<u8> to Url
+        };
+
+        // Emit NonFunigibleTokenMinted event
+        event::emit(NonFungibleTokenMinted {
+            nft_id: new_nft.id,
+            recipient: recipient,
+        });
+
+        // Transfer the NFT to the recipient
+        transfer::transfer_to(recipient, new_nft);
+
+        // Update Sales balance
+        minster_cap.sales += nft_price;
+
+        // Return the change
+        let change = payment_coin - nft_price;
+        move_from_sender(change);
+        
     /* 
         Takes two NFTs and combines them into a new NFT. The two NFTs are deleted. This can only be
         called by the owner of the NFT objects.
