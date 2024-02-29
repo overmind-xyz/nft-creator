@@ -158,7 +158,7 @@ module overmind::NonFungibleToken {
     */
     fun init(ctx: &mut TxContext) {
         let minter_cap = MinterCap {
-            id: ctx.sender(), // Set ID addsress of sender
+            id: ctx.sender(), // Set ID address of sender
             sales: Balance(0),
         };
         // Move Ownership of MinterCap Obj to deployer
@@ -348,10 +348,23 @@ module overmind::NonFungibleToken {
     //==============================================================================================
     // Helper functions - Add your helper functions here (if any)
     //==============================================================================================
+    // Helper to generate a unique ID
+    public fun generate_unique_id(): UID {
+        UID::generate()
+    }
+
+    //Helper function to tranfer coin to a specific recipient
+    public fun transfer_to(recipient: adress, amount: u64, ctx: &mut TxContext) {
+        let coin = Coin(ammount);
+        move_to(recipient, coin);
+    }
 
     //==============================================================================================
     // Validation functions - Add your validation functions here (if any)
     //==============================================================================================
+
+    // Validation function to check if sender is the owner of an NFT
+
 
     //==============================================================================================
     // Tests - DO NOT MODIFY
