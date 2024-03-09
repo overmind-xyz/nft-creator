@@ -182,8 +182,38 @@ module overmind::NonFungibleToken {
         minter_cap: &mut MinterCap,
         ctx: &mut TxContext, 
     ) {
-        
+// Ensure that the payment is equal to or greater than the price of the NFT (1 SUI)
+        if (payment_coin.value < 1) {
+            ctx.abort(EInsufficientPayment);
+        }
+
+        // Transfer 1 SUI to the MinterCap and get the change
+        let change_coin = Coin<SUI>::new(payment_coin.value - 1);
+        minter_cap.sales.value += 1;
+
+        // Mint a new NFT
+        let new_nft = NonFungibleToken {
+            id: move_from(move(SUI::empty())),
+            name: vector_to_str(nft_name),
+            description: vector_to_str(nft_description),
+            image: Url::parse(vector_to_str(nft_image)),
+        };
+
+        // Transfer the new NFT to the recipient
+        move_to(recipient, new_nft);
+
+        // Emit the NonFungibleTokenMinted event
+        emit NonFungibleTokenMinted {
+            nft_id: new_nft.id,
+            recipient: recipient,
+        };
+
+        // Return the change coin
+        change_coin
     }
+        
+        
+    
 
     /* 
         Takes two NFTs and combines them into a new NFT. The two NFTs are deleted. This can only be
@@ -200,8 +230,39 @@ module overmind::NonFungibleToken {
         new_image_url: vector<u8>,
         ctx: &mut TxContext,
     ): NonFungibleToken {
-        
+    assert_own_nft(nft1.id, ctx);
+        assert_own_nft(nft2.id, ctx);
+
+        // Concatenate the names of the two NFTs
+        let new_nft_name = nft1.name + " + " + nft2.name;
+
+        // Set the description of the new NFT
+        let new_nft_description = "Combined NFT of " + nft1.name + " and " + nft2.name;
+
+        // Create a new NFT object
+        let new_nft = NonFungibleToken {
+            id: move_from(move(SUI::empty())),
+            name: new_nft_name,
+            description: new_nft_description,
+            image: Url::parse(vector_to_str(new_image_url)),
+        };
+
+        // Emit the NonFungibleTokenCombined event
+        emit NonFungibleTokenCombined {
+            nft1_id: nft1.id,
+            nft2_id: nft2.id,
+            new_nft_id: new_nft.id,
+        };
+
+        // Delete the original NFTs
+        move_from(nft1);
+        move_from(nft2);
+
+        // Return the new combined NFT
+        new_nft
     }
+        
+    
 
     /* 
         Withdraws the sales balance from the MinterCap object. This can only be called by the owner 
@@ -214,6 +275,18 @@ module overmind::NonFungibleToken {
         minter_cap: &mut MinterCap,
         ctx: &mut TxContext,
     ): Coin<SUI> {
+assert_sender_is_admin(ctx);
+
+    // Withdraw the sales balance
+    let withdrawn_coin = move_from(minter_cap.sales);
+
+    // Emit the SalesWithdrawn event
+    emit SalesWithdrawn {
+        amount: withdrawn_coin.value,
+    };
+
+    // Return the withdrawn coin
+    withdrawn_coin
         
     }
 
